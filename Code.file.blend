@@ -1,0 +1,40 @@
+import bpy
+
+# Create a plane object
+bpy.ops.mesh.primitive_plane_add(size=10)
+
+# Merge all vertices at the center
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.merge(type='CENTER')
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Add subdivision surface modifier
+subsurf = bpy.context.object.modifiers.new(name="Subdivision", type='SUBSURF')
+subsurf.levels = 6
+subsurf.render_levels = 6
+
+# Add voronoi texture
+texture = bpy.data.textures.new("Voronoi", type='VORONOI')
+texture.voronoi_distance_metric = 'MANHATTAN'
+texture.noise_scale = 10.0
+
+# Add material and texture to object
+material = bpy.data.materials.new(name="Terrain")
+material.use_nodes = True
+material.node_tree.nodes.clear()
+material_output = material.node_tree.nodes.new(type='ShaderNodeOutputMaterial')
+bsdf = material.node_tree.nodes.new(type='ShaderNodeBsdfPrincipled')
+texture_node = material.node_tree.nodes.new(type='ShaderNodeTexVoronoi')
+material.node_tree.links.new(bsdf.inputs['Base Color'], texture_node.outputs['Color'])
+material.node_tree.links.new(material_output.inputs['Surface'], bsdf.outputs['BSDF'])
+
+bpy.context.object.data.materials.append(material)
+bpy.context.object.active_material.node_tree.nodes['Texture'].texture = texture
+
+# Add particle system
+particle_system = bpy.context.object.modifiers.new(name="Particles", type='PARTICLE_SYSTEM')
+particle_system.particle_system.settings.type = 'HAIR'
+particle_system.particle_system.settings.hair_length = 0.1
+particle_system.particle_system.settings.count = 10000
+particle_system.particle_system.settings.use_advanced_hair = True
